@@ -1,0 +1,8 @@
+AuthType Basic
+AuthName "Protected zone"
+AuthUserFile /var/www/work/.htpasswd
+Require valid-user
+<Files .htpasswd>
+deny from all
+</Files>
+

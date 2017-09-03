@@ -1,0 +1,293 @@
+<HEAD>
+	<link rel = "stylesheet" type="txt/css" href="style.css">
+</HEAD>
+				<?PHP
+					require_once 'mysql.php';
+					
+		//		$Host = "localhost";
+		//		$User = "root";
+		//		$Password = "POST_graduate";
+		//		$DbName = "work";
+				$TabName = "staff";
+				$TabNameProductBall = "ProductBall";
+				$TabNameSale = "sale";
+		//		$Link = mysql_connect ($Host, $User, $Password);
+		//		$sql1 = "SET NAMES 'UTF8'";
+		//		mysql_query ($sql1, $Link);
+				$id = 0;
+				$itogo = 0;
+				// проверка авторизован ли пользователь
+				
+				if (!isset($_SESSION["user_id"])) { header ("Location: http://".$_SERVER['HTTP_HOST']."/work/start.php");}
+				
+				//снимаем начения для передачи данных из формы в запись
+				unset ($_POST["user"]); //id пользователя для передачи в обработку при заполнении формы
+				unset ($_POST["day"]); // день за который пользователь меняет данные
+				unset ($_POST["product_id"]); // продукт для которого пользоваель меняет или вносит данные 
+				unset ($_POST["prod-col"]); // количетво проданного продукта вводится пользователем в форме
+				
+				// переменные для определения текущего года и месяца
+				$today_year = date ('o');
+				$today_month = date ('m');
+				$today = date ('j'); //текущий день без ведущего нуля
+				$today_any_day="$today_year-$today_month";
+			//	echo $today_any_day;
+			
+			
+				// запрос имени авторизовавшегося пользователя
+				$sql = "SELECT * FROM $TabName WHERE id = $_SESSION[user_id]";
+				$result = mysql_query($sql);
+				$user = mysql_fetch_row($result);
+				
+				// вывод в виде заголовка авторизованного пользователя
+				print ("<BR>Здравствуйте,  <B>$user[2]</B></BR>\n <BR>");
+				
+				
+// подсчёт места по баллам пользователя среди других пользователей
+
+$sql_staff = "SELECT * FROM $TabName";
+
+$result_staff = mysql_query ($sql_staff);
+while ($row_staff=mysql_fetch_array($result_staff)) {
+
+$sql_sale = "SELECT * FROM $TabNameSale WHERE Staff= \"$row_staff[id]\" AND Day LIKE \"$today_any_day%\"";
+				
+		//		echo "  sql_sale   $sql_sale<BR>";
+				$id=$row_staff[id];
+				
+												
+				$result_sale= mysql_query($sql_sale);
+			
+				while ($row_sale = mysql_fetch_array($result_sale)) {
+				//запрашиваем какое количество баллов идет для данного продукта
+				$sql_ball = "SELECT * FROM $TabNameProductBall WHERE id = \"$row_sale[Product]\"";
+		//		echo "$sql_ball<BR>";
+				$result_ball = mysql_query($sql_ball);
+				$row_ball = mysql_fetch_row($result_ball);// row_2[4] колонка с баллами данного продукта
+				
+				// вычиляем баллы для кадого продукта
+
+				$usersball[$id] = $row_sale['ProductColichestvo'] * $row_ball[4];
+		//		echo "<TR><TD><BR>$usersball[$id] баллов за </TD><TD>$row_ball[2]</TD></TR>" ;
+				$itogo_users[$id] = $itogo_users[$id] + $usersball[$id];
+				//echo "<BR>$row_2[4]<BR>";
+				
+			
+				} // row_staff  пользователь и его баллы (всего) по его id хранятся в itogo_users
+			//echo "<BR><b>$itogo_users[$id]</b> Баллов у пользователя $row_staff[staffFamiliya]";
+			}
+
+
+// подсчёт места в рейтинге среди других пользователей
+$real_user_id = $_SESSION[user_id];
+//echo "<BR>";
+//var_dump ($itogo_users);
+arsort ($itogo_users); // сортируем по убыванию   те в начале самый большой балл пользователя
+$mesto = 0; //начальная позиция в рейтинге
+//echo "<BR>";
+//var_dump ($itogo_users);
+foreach ($itogo_users as $users=>$users_ball) {
+//	echo "<BR>$users. баллы всего .$users_ball";
+//	echo "<BR>авторизованный баллы = $itogo_users[$real_user_id]";
+	$i++; // место в рейтинге ищем в массиве упорядоченному по убываию
+	if ($users == $real_user_id) {$mesto=$i;};
+				};
+//echo "<BR>ваше место в рейтинге = $mesto   баллы всего $itogo_users[$real_user_id]";
+
+
+	///////////////////////////////////////////////////////////////////////////					
+				
+					
+				
+				//вывод все набранных бало и баллов по продуктам
+				//print ("Всего набрано баллов  <BR>");
+// запрашиваем продажи за текущий месяц для данного пользователя
+$sql = "SELECT * FROM $TabNameSale WHERE Staff= \"$_SESSION[user_id]\" AND Day LIKE \"$today_any_day%\"";
+				
+				$result = mysql_query($sql);
+
+				print ("<TABLE BORDER=1 WIDTH=\"75%\" CELLSPACING=1 CELLPADDING=1 ALIGN=CENTER>\n");
+				while ($row = mysql_fetch_array($result)) {
+				//запрашиваем какое количество баллов идет для данного продукта
+				$sql_2 = "SELECT * FROM $TabNameProductBall WHERE id = \"$row[Product]\"";
+				$result_2 = mysql_query($sql_2);
+				$row_2 = mysql_fetch_row($result_2);// row_2[4] колонка с баллами данного продукта
+				
+				// вычиляем баллы для кадого продукта
+				$userball = $row['ProductColichestvo'] * $row_2[4];
+				echo "<TR><TD><BR>$userball баллов за </TD><TD>$row_2[2]</TD></TR>" ;
+				$itogo = $itogo + $userball;
+				//echo "<BR>$row_2[4]<BR>";
+				}
+				echo "<TR><TD colspan=2>Всего баллов<font size = 5 color=red > <b>$itogo</b></font><BR>  Положение в рейтинге: <font size = 5 color=red > <b> $mesto </b></font>место </TD></TR>";
+				print ("</TABLE>");
+								
+			//	echo "<BR>$sql <BR>"; // отладочный вывод запроса по пользователю за текущий месяц
+				
+				
+
+
+		
+				
+				echo "<p>";
+				print ("Таблица продаж за текущий месяц "); echo date ('F'); echo "<p></p>";
+	
+				// форма для ввода измений о продажах
+				echo "<FORM  action=\"update-bdsale.php\" method=POST >";
+				
+				// вставляем скрытое поле с указанием id текущего пользователя
+				echo "<input type=\"hidden\" name=\"user\" value=\"". $_SESSION[user_id] ."\">"; 
+				
+									
+/*				//создание таблицы для вывода текущих продаж месяца и ввода новых
+				print ("<TABLE BORDER=1 WIDTH=\"25%\" CELLSPACING=2 CELLPADDING=2 ALIGN=CENTER>\n");
+				print ("<TR>");
+				
+				
+				// достаем из БД заголовок продуктов
+				$sql = "SELECT * FROM `ProductBall`";
+				$result = mysql_query($sql);
+				while ($row=mysql_fetch_array ($result)) {
+							$product_id = $row['id'];
+							$table[0][] = $row['ProductName'];
+							$products[] = $product_id;// массив с содержанием номеров продуктов (айди) чтобы в дальнейшем использовать их в ячейках
+							};
+			
+		//	var_dump ($products);
+			
+			// выводим таблицу
+			for ($day=1; $day<32; $day++) {
+				// для каждой ячейки достаем значение (кол-во проданного продукта всего за день (суммируем))
+				if ($day < 10) { $day = '0'.$day; }
+				foreach ($products as $product_key=>$product_name) {
+					$sql = "SELECT SUM(`ProductColichestvo`) as `ProductColichestvo` FROM $TabNameSale WHERE `Staff`=$user[0] AND `Day`=\"$today_year-$today_month-$day\" AND `Product`=\"$product_name\"";
+					//echo "$sql"; //для отладки выводит строку для запроса в базу
+					$result = mysql_query($sql);
+					while ($row = mysql_fetch_array($result)) {
+								$table[$day][$product_name] = $row['ProductColichestvo']; // возможно надо вписать продуктнаме
+							};	 // while
+			};	// foreach
+		}; // for
+		// выводим строки под дням с количеством проданого продукта
+				foreach ($table as $table_day=>$cell) {
+					echo "<tr>";
+					echo "<td>$table_day</td>"; // выводим номер дня
+					foreach ($cell as $product_key=>$productcolichestvo) { //key код продукта
+						// если текущий вывод строки дня в пределах 2-х дней то формируем форму для правки и ввода данных
+					//	echo "$product_key<BR>";
+					//	echo "$productcolichestvo<BR>";
+						$today_2 = $today - $table_day;
+						if (($today_2 <= 2) AND ($today_2 >=0) ) {
+							echo "<TD>$productcolichestvo<BR>";
+							
+							echo "<input type=\"hidden\" name=\"prod_colold[$table_day][$product_key]\" value=\"$productcolichestvo\">";
+							
+							echo "<select name = \"prod_colnew[$table_day][$product_key]\">";
+							
+								echo "<option value = \"\">нет продаж</option>";
+							
+								for ($ii=1; $ii<21; $ii++) {
+									
+									if ($ii == $productcolichestvo) { echo "<option selected value = \"$ii\"> заменить на $ii</option>"; }
+									else echo "<option value = \"$ii\"> заменить на $ii</option>";
+									};//for для вывода списка допустимых значений
+							echo "</select></td>";
+							}// if
+						else echo "<td>$productcolichestvo</td>";
+						}
+					}
+				print ("</TR>");
+				print ("</TABLE>");
+				echo "<input type=\"submit\" name=\"submit\" Value=\"применить изменения\">";
+				echo "<input type=\"reset\" Value=\"очистить\">";
+				echo "</FORM>";
+				echo "</p>";
+			
+
+
+
+*/
+// таблица дни в горизонт
+// сформировали заголовок (дни)
+$table[0][0] = "НАЗВАНИЕ ПРОДУКТА";	
+
+for ($day=1; $day<32; $day++) {
+	$table[0][] = $day;	
+	} // for
+
+
+$sql = "SELECT * FROM `ProductBall`";
+$result = mysql_query($sql);
+
+//$products_count = 1;
+
+while ($row=mysql_fetch_array ($result)) {
+	$product_id = $row['id'];
+	$product_name = $row['ProductName'];
+	
+	//$table[$products_count][0] = $product_name;
+	$table[$product_id][0] = $product_name;
+	// для каждого продукта достать из бд кол-во продаж за указанный день
+	for ($day=1; $day<32; $day++) {
+		
+		if ($day < 10) { $day = '0'.$day; }
+		
+$sql_1 = "SELECT SUM(`ProductColichestvo`) as `ProductColichestvo` FROM $TabNameSale WHERE `Staff`=$user[0] AND `Day`=\"$today_year-$today_month-$day\" AND `Product`=\"$product_id\"";
+
+			//echo "$sql_1<BR>"; //для отладки выводит строку для запроса в базу
+			$result_1 = mysql_query($sql_1);
+			while ($row_1 = mysql_fetch_array($result_1)) {
+				//$table[$products_count][$day] = $row_1['ProductColichestvo']; // возможно надо вписать продуктнаме
+				$table[$product_id][$day] = $row_1['ProductColichestvo'];
+				};	 // while
+		} // for 
+		
+	//$products_count++;
+	}; // while
+
+//var_dump ($table);
+
+print ("<TABLE BORDER=1 WIDTH=\"100%\" CELLSPACING=2 CELLPADDING=2 ALIGN=CENTER>\n");
+//echo "<table border=\"1\">";
+
+foreach ($table as $product_id=>$cell) { // $table[$product_id][$day]
+	echo "<TR>";
+	echo "<TD>$product_id</TD>"; // 
+	foreach ($cell as $day=>$productcolichestvo) {
+	//	echo "<TD>$productcolichestvo</TD>";
+	
+	
+$today_2 = $today - $day;
+		if (($today_2 <= 2) AND ($today_2 >=0) ) {
+			echo "<TD>$productcolichestvo<BR>";
+			 
+			 // поправить если первый день месяца выпадает !!!!!!!!!!!!!!!!!!!!!!!!!!!
+			 if (($product_id!=0) AND ($day!=0)) {
+			echo "<input type=\"hidden\" name=\"prod_colold[$product_id][$day]\" value=\"$productcolichestvo\">";
+			echo "<select name = \"prod_colnew[$product_id][$day]\">";
+			echo "<option value = \"\">нет продаж</option>";
+						
+				for ($ii=1; $ii<21; $ii++) {
+								
+						if ($ii == $productcolichestvo) { echo "<option selected value = \"$ii\"> заменить на $ii</option>"; }
+							else echo "<option value = \"$ii\"> заменить на $ii</option>";
+											};//for для вывода списка допустимых значений
+							echo "</select></td>";
+							}}// if
+		else echo "<td>$productcolichestvo</td>"; 
+	
+		} // foreach
+	} // foreach
+echo "</TR>";
+echo "</table>";
+echo "<BR>";
+echo "<input type=\"submit\" name=\"submit\" Value=\"применить изменения\">";
+echo "<input type=\"reset\" Value=\"очистить\">";
+echo "</FORM>";
+echo "</p>";
+
+// в скрипт для записи данных передаётся не день а ид продукта   возможно поменять местами надо
+
+mysql_close ($Link)
+?>
+
